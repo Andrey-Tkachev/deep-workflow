@@ -1,0 +1,3 @@
+[submodule "pysimgrid"]
+	path = pysimgrid
+	url = git@github.com:alexmnazarenko/pysimgrid.git
