@@ -7,6 +7,15 @@ In project directory
 ./vagrant up
 ```
 
+OR
+
+In project directory
+
+```
+docker build . -t img
+docker run img
+```
+
 ### Dependencies
 
 python3.6:

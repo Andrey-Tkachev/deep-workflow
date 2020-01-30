@@ -23,9 +23,9 @@ class GCNNetwork(nn.Module):
         self.node_network = nn.Sequential(
             nn.Linear(emb_dim, hidden_dim),
             nn.Dropout(0.1),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_dim, emb_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
         self.summary_network = nn.Sequential(
             nn.Linear(emb_dim, hidden_dim),
