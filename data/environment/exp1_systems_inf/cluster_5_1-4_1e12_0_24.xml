@@ -1,0 +1,58 @@
+<?xml version='1.0'?>
+<!DOCTYPE platform SYSTEM "http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd">
+<platform version="4">
+  <AS id="AS0" routing="Floyd">
+  <host id="master" core="1" speed="1.000000Gf"/>
+  <host id="host0" core="1" speed="1.524070Gf"/>
+  <host id="host1" core="1" speed="2.753535Gf"/>
+  <host id="host2" core="1" speed="1.905331Gf"/>
+  <host id="host3" core="1" speed="3.438554Gf"/>
+  <host id="host4" core="1" speed="2.603022Gf"/>
+
+  <link id="link_loopback" bandwidth="1000000000000.000000MBps" latency="0.000000us" sharing_policy="FATPIPE"/>
+  <link id="link_master" bandwidth="1000000000000.000000MBps" latency="0.000000us" sharing_policy="SHARED"/>
+  <link id="link0" bandwidth="1000000000000.000000MBps" latency="0.000000us" sharing_policy="SHARED"/>
+  <link id="link1" bandwidth="1000000000000.000000MBps" latency="0.000000us" sharing_policy="SHARED"/>
+  <link id="link2" bandwidth="1000000000000.000000MBps" latency="0.000000us" sharing_policy="SHARED"/>
+  <link id="link3" bandwidth="1000000000000.000000MBps" latency="0.000000us" sharing_policy="SHARED"/>
+  <link id="link4" bandwidth="1000000000000.000000MBps" latency="0.000000us" sharing_policy="SHARED"/>
+
+  <router id="router"/>
+  <route src="master" dst="router" symmetrical="YES">
+    <link_ctn id="link_master"/>
+  </route>
+  <route src="master" dst="master" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host0" dst="router" symmetrical="YES">
+    <link_ctn id="link0"/>
+  </route>
+  <route src="host0" dst="host0" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host1" dst="router" symmetrical="YES">
+    <link_ctn id="link1"/>
+  </route>
+  <route src="host1" dst="host1" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host2" dst="router" symmetrical="YES">
+    <link_ctn id="link2"/>
+  </route>
+  <route src="host2" dst="host2" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host3" dst="router" symmetrical="YES">
+    <link_ctn id="link3"/>
+  </route>
+  <route src="host3" dst="host3" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host4" dst="router" symmetrical="YES">
+    <link_ctn id="link4"/>
+  </route>
+  <route src="host4" dst="host4" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  </AS>
+</platform>

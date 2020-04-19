@@ -1,0 +1,98 @@
+<?xml version='1.0'?>
+<!DOCTYPE platform SYSTEM "http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd">
+<platform version="4">
+  <AS id="AS0" routing="Floyd">
+  <host id="master" core="1" speed="1.000000Gf"/>
+  <host id="host0" core="1" speed="2.443109Gf"/>
+  <host id="host1" core="1" speed="2.065717Gf"/>
+  <host id="host2" core="1" speed="1.747456Gf"/>
+  <host id="host3" core="1" speed="3.800546Gf"/>
+  <host id="host4" core="1" speed="2.360164Gf"/>
+  <host id="host5" core="1" speed="2.590484Gf"/>
+  <host id="host6" core="1" speed="1.057899Gf"/>
+  <host id="host7" core="1" speed="2.524306Gf"/>
+  <host id="host8" core="1" speed="1.017341Gf"/>
+  <host id="host9" core="1" speed="1.431305Gf"/>
+
+  <link id="link_loopback" bandwidth="5000.000000MBps" latency="1.000000us" sharing_policy="FATPIPE"/>
+  <link id="link_master" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link0" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link1" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link2" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link3" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link4" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link5" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link6" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link7" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link8" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+  <link id="link9" bandwidth="100.000000MBps" latency="100.000000us" sharing_policy="SHARED"/>
+
+  <router id="router"/>
+  <route src="master" dst="router" symmetrical="YES">
+    <link_ctn id="link_master"/>
+  </route>
+  <route src="master" dst="master" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host0" dst="router" symmetrical="YES">
+    <link_ctn id="link0"/>
+  </route>
+  <route src="host0" dst="host0" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host1" dst="router" symmetrical="YES">
+    <link_ctn id="link1"/>
+  </route>
+  <route src="host1" dst="host1" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host2" dst="router" symmetrical="YES">
+    <link_ctn id="link2"/>
+  </route>
+  <route src="host2" dst="host2" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host3" dst="router" symmetrical="YES">
+    <link_ctn id="link3"/>
+  </route>
+  <route src="host3" dst="host3" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host4" dst="router" symmetrical="YES">
+    <link_ctn id="link4"/>
+  </route>
+  <route src="host4" dst="host4" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host5" dst="router" symmetrical="YES">
+    <link_ctn id="link5"/>
+  </route>
+  <route src="host5" dst="host5" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host6" dst="router" symmetrical="YES">
+    <link_ctn id="link6"/>
+  </route>
+  <route src="host6" dst="host6" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host7" dst="router" symmetrical="YES">
+    <link_ctn id="link7"/>
+  </route>
+  <route src="host7" dst="host7" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host8" dst="router" symmetrical="YES">
+    <link_ctn id="link8"/>
+  </route>
+  <route src="host8" dst="host8" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  <route src="host9" dst="router" symmetrical="YES">
+    <link_ctn id="link9"/>
+  </route>
+  <route src="host9" dst="host9" symmetrical="NO">
+    <link_ctn id="link_loopback"/>
+  </route>
+  </AS>
+</platform>

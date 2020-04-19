@@ -8,6 +8,9 @@ ENV COMPONENT_NAME rl-manager
 WORKDIR /
 
 
+COPY pysimgrid /pysimgrid
+RUN cd /pysimgrid && bash ./get_simgrid.sh
+
 RUN apt-get update \
     && apt-get install -y cmake g++ python3-setuptools \
     && apt-get install -y libboost-context-dev libboost-program-options-dev libboost-filesystem-dev doxygen graphviz-dev \
@@ -21,14 +24,10 @@ RUN apt-get update \
     && apt-get install -y wget \
     && pip3 install --upgrade pip
 
-
-COPY pysimgrid /pysimgrid
-
-RUN cd /pysimgrid && bash ./get_simgrid.sh
-RUN cd /pysimgrid && python3.6 setup.py install --user
-
 RUN python3.6 -m pip install numpy networkx cython torch
+RUN cd /pysimgrid && python3.6 setup.py install --user
 
 COPY *.py /
 
-CMD python3.6 gcn_experiment.py
+CMD /bin/bash
+# CMD python3.6 gcn_experiment.py

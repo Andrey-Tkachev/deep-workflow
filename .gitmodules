@@ -1,3 +1,6 @@
 [submodule "pysimgrid"]
 	path = pysimgrid
-	url = git@github.com:alexmnazarenko/pysimgrid.git
+	url = git@github.com:Andrey-Tkachev/pysimgrid.git
+[submodule "daggen"]
+	path = daggen
+	url = git@github.com:frs69wq/daggen.git

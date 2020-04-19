@@ -1,5 +1,6 @@
 # Editors
 .vscode/
+.DS_Store
 
 # Vagrant
 .vagrant/
@@ -42,3 +43,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Data
+data/workflows/dax
+data/workflows/dot
+data/workflows/raw

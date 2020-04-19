@@ -19,6 +19,8 @@ Vagrant.configure("2") do |config|
     
     python3.6 -m pip install --upgrade pip
     python3.6 -m pip install numpy networkx cython torch
+    cd /vagrant/pysimgrid && bash ./get_simgrid.sh
+    cd /vagrant/pysimgrid && python3.6 setup.py install --user
   SHELL
 
 end
