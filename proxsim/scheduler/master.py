@@ -11,12 +11,14 @@ from pysimgrid import cplatform, simdag
 
 from ..action import Action
 from ..enums import ActionType, SimulationState
+from ..context import Context
 
 
 class MasterSchedulerBase(object):
 
-    def __init__(self, connection: Connection):
+    def __init__(self, connection: Connection, context: Context):
         self.connection = connection
+        self.context = context
         self.active = True
         self.init_bindings()
     
@@ -25,20 +27,26 @@ class MasterSchedulerBase(object):
             SimulationState.Initial: self.null,
             SimulationState.Prepare: self.prepare,
             SimulationState.Schedule: self.schedule,
-            SimulationState.Finally: self.terminate,
             SimulationState.Terminal: self.terminate
         }
 
     def communicate(self, action: ActionType, params=dict()):
-        logging.info(f'Sending action {action}')
+        logging.debug(f'Sending action {action}')
         self.connection.send(Action(action, params))
         result = self.connection.recv()
-        logging.info(f'Action result recived: {result}')
+        logging.debug('Action result recived')
+        # logging.debug(f'Action result is {result}')
         return result
 
     def stop_communication(self):
-        logging.info('Sending stop-communication flag')
+        logging.debug('Sending stop-communication flag')
         self.connection.send(Action(ActionType._End, dict()))
+
+    def get_graph(self):
+        return self.communicate(ActionType.GetGraph)
+
+    def get_hosts(self):
+        return self.communicate(ActionType.GetHosts)
 
     def get_tasks(self, query, prop='state'):
         return self.communicate(ActionType.GetTasks, {'query': query, 'prop': prop})
@@ -66,9 +74,9 @@ class MasterSchedulerBase(object):
     def run(self):
         while self.active:
             state = self.connection.recv()
-            logging.info(f'Recived state: {state.name}')
+            logging.debug(f'Recived state: {state.name}')
             self.state_binding[state]()
-            if state not in [SimulationState.Initial, SimulationState.Finally]:
+            if state not in [SimulationState.Initial, SimulationState.Terminal]:
                 self.stop_communication()
 
 

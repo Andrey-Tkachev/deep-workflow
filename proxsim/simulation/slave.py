@@ -1,5 +1,6 @@
 import logging
 import typing
+from contextlib import contextmanager
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
@@ -14,18 +15,31 @@ class ProximalSimulationSlave(object):
         self.connection = connection
 
     def __enter__(self):
-        self.state(SimulationState.Initial)
+        logging.info('Enter simulation scope')
         return self
 
     def __exit__(self, *args):
-        self.state(SimulationState.Terminal)
+        logging.info('Leave simulation scope')
+        if args:
+            exc_type, exc_value, traceback = args
+            logging.error(exc_value, exc_info=True)
         return False
+
+    @contextmanager    
+    def scheduling_scope(self):
+        self.state(SimulationState.Initial)
+        try:
+            yield
+        except Exception as e:
+            logging.error(e, exc_info=True)
+        finally:
+            self.state(SimulationState.Terminal)
 
     def iterate_actions(self) -> ActionsIterator:
         return ActionsIterator(self.connection)
 
     def state(self, state: SimulationState):
-        logging.info(f'Simulation state {state.name}')
+        logging.debug(f'Simulation state {state.name}')
         self.connection.send(state)
 
     def send(self, data):

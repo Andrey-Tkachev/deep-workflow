@@ -4,8 +4,7 @@ class SimulationState(Enum):
     Initial = 1
     Prepare = 2
     Schedule = 3
-    Finally = 4
-    Terminal = 5
+    Terminal = 4
     _End = 100
 
 

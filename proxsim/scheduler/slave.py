@@ -10,13 +10,19 @@ from pysimgrid import cplatform, simdag
 
 from ..enums import ActionType, SimulationState
 from ..simulation import ProximalSimulationSlave
+from ..feature import FeatureExtractorBase
 
 
 class SlaveScheduler(simdag.DynamicScheduler):
 
-    def __init__(self, simulation, connection: ProximalSimulationSlave):
+    def __init__(self,
+        simulation: simdag.Simulation,
+        connection: ProximalSimulationSlave,
+        feature: typing.Type[FeatureExtractorBase]
+    ):
         super(SlaveScheduler, self).__init__(simulation)
         self.connection = connection
+        self.feature = feature
         self.init_bindings()
 
     def action_unknown(self, simulation: simdag.Simulation, **params):
@@ -48,32 +54,10 @@ class SlaveScheduler(simdag.DynamicScheduler):
         return result
 
     def action_get_graph(self, simulation: simdag.Simulation, **params) -> nx.DiGraph:
-        def task_features(task):
-            return {
-                'name': task.name,
-                'amount': task.amount,
-                'state': task.state.name,
-            }
-
-        graph = simulation.get_task_graph()
-        picklable_graph = nx.DiGraph()
-        for task in graph:
-            picklable_graph.add_node(task.name, features=task_features(task))
-
-        for u, v, weight in graph.edges.data('weight'):
-            picklable_graph.add_edge(u.name, v.name, weight=weight)
-
-        return picklable_graph
+        return self.feature.get_task_graph(simulation)
 
     def action_get_hosts(self, simulation: simdag.Simulation, **params) -> typing.List[typing.Dict]:
-        def host_features(host: cplatform.Host):
-            return {
-                'name': host.name,
-                'speed': host.speed,
-                'available_speed': host.available_speed,
-            }
-
-        return [host_features(host) for host in simulation.hosts]
+        return self.feature.get_hosts_features(simulation)
 
     def action_get_tasks(self, simulation: simdag.Simulation, **params) -> typing.List[typing.Dict]:
         if 'query' not in params:
@@ -101,10 +85,11 @@ class SlaveScheduler(simdag.DynamicScheduler):
 
     def make_communications(self, simulation: simdag.Simulation, changed=None):
         for action in self.connection.iterate_actions():
-            logging.info(f'Action {action.action.name} recived')
+            logging.debug(f'Action {action.action.name} recived')
             handler = self._action_binding.get(action.action, self.action_unknown)
             action_result = handler(simulation, changed=changed, **action.params)
-            logging.info(f'Action {action.action.name} processed: {action_result}')
+            logging.debug(f'Action {action.action.name} processed')
+            # logging.debug(f'Sending result: {action_result}')
             self.connection.send(action_result)
 
     def prepare(self, simulation: simdag.Simulation):
@@ -114,10 +99,3 @@ class SlaveScheduler(simdag.DynamicScheduler):
     def schedule(self, simulation, changed):
         self.connection.state(SimulationState.Schedule)
         self.make_communications(simulation, changed)
-
-    def _finally(self):
-        self.connection.state(SimulationState.Finally)
-
-    def run(self):
-        super(SlaveScheduler, self).run()
-        self._finally()

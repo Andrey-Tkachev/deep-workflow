@@ -48,3 +48,6 @@ venv.bak/
 data/workflows/dax
 data/workflows/dot
 data/workflows/raw
+
+# Keys
+*.key

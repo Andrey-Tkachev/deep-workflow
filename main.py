@@ -9,20 +9,16 @@ For bettter examples on C API wrappers look at test/test_capi.py.
 
 from __future__ import print_function
 
-from multiprocessing import Pool
-
-import random
 import logging
 import multiprocessing
+import random
+from multiprocessing import Pool
 
 import networkx
 
 import pysimgrid
 import pysimgrid.simdag.algorithms as algorithms
-from pysimgrid import cscheduling
-
-from pysimgrid import simdag
-
+from pysimgrid import cscheduling, simdag
 
 
 _LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -84,13 +80,13 @@ def run_simulation(args):
     scheduler_name, env, task = args
     scheduler_class = _SCHEDULERS[scheduler_name]
     with simdag.Simulation(env, task) as simulation:
-    print(f'Start {scheduler_name} simulation')
-    scheduler = scheduler_class(simulation)
-    scheduler.run()
-    print(f"""{scheduler_name}
-        makespan: {simulation.clock}
-        scheduling time: {scheduler.scheduler_time}
-    """)
+      print(f'Start {scheduler_name} simulation')
+      scheduler = scheduler_class(simulation)
+      scheduler.run()
+      print(f"""{scheduler_name}
+          makespan: {simulation.clock}
+          scheduling time: {scheduler.scheduler_time}
+      """)
     return simulation.clock, scheduler_name
 
 

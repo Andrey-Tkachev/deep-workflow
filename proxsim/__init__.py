@@ -1,3 +1,4 @@
+from .feature import FeatureExtractorBase, FeatureExtractorDummy
 from .action import Action
 from .context import Context
 from .enums import ActionType, SimulationState

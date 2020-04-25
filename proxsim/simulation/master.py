@@ -16,7 +16,7 @@ class ProximalSimulationMaster(object):
     def __enter__(self):
         master_connection, slave_connection = Pipe()
         self._connection = master_connection
-        self._slave_process = Process(target=self.target, args=(self.context, slave_connection))
+        self._slave_process = Process(target=self.target, args=(self.context.light_copy(), slave_connection))
         self._slave_process.start()
         slave_connection.close()
         return self
@@ -29,5 +29,8 @@ class ProximalSimulationMaster(object):
     def __exit__(self, *args):
         if not self._connection.closed:
             self._connection.close()
-        self._slave_process.join(self.join_timeout)
+        if args:
+            self._slave_process.terminate()
+        else:
+            self._slave_process.join(self.join_timeout)
         return False

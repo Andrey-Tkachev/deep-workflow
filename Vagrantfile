@@ -18,7 +18,7 @@ Vagrant.configure("2") do |config|
     apt-get install -y python3-pip
     
     python3.6 -m pip install --upgrade pip
-    python3.6 -m pip install numpy networkx cython torch
+    python3.6 -m pip install numpy networkx dgl cython torch comet_ml
     cd /vagrant/pysimgrid && bash ./get_simgrid.sh
     cd /vagrant/pysimgrid && python3.6 setup.py install --user
   SHELL
