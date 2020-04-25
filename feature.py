@@ -63,7 +63,7 @@ class FeatureExtractor(FeatureExtractorBase):
             for ind, task in enumerate(graph):
                 self.task_ids[task.name] = ind
 
-        nxgraph = nx.DiGraph()
+            nxgraph = nx.DiGraph()
         data_len = len(graph)
         real_features = torch.zeros((data_len, self.REAL_FEATURES_NUM), dtype=torch.float)
         cat_features = torch.zeros((data_len, self.CAT_FEATURES_NUM), dtype=torch.long)
@@ -80,17 +80,18 @@ class FeatureExtractor(FeatureExtractorBase):
             cat_features[ind] = torch.tensor([
                 task.state.value
             ])
-            nxgraph.add_node(ind)
-
-        for u, v, weight in graph.edges.data('weight'):
-            nxgraph.add_edge(self.task_ids[u.name], self.task_ids[v.name], weight=weight)
-
-        graph = dgl.DGLGraph()
-        graph.from_networkx(nxgraph)
+            if have_to_return_ids_map:
+                nxgraph.add_node(ind)
 
         if have_to_return_ids_map:
-            return graph, real_features, cat_features, self.task_ids
-        return graph, real_features.numpy(), cat_features.numpy()
+            for u, v, weight in graph.edges.data('weight'):
+                nxgraph.add_edge(self.task_ids[u.name], self.task_ids[v.name], weight=weight)
+
+        if have_to_return_ids_map:
+            graph = dgl.DGLGraph()
+            graph.from_networkx(nxgraph)
+            return graph, self.task_ids
+        return real_features.numpy(), cat_features.numpy()
 
 
     def get_hosts_features(self, simulation: Simulation):

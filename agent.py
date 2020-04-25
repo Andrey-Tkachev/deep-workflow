@@ -93,15 +93,13 @@ class PolicyNet(nn.Module):
             emb_dim=emb_dim,
             out_dim=out_dim)
         self.fc1 = nn.Linear(16, 24)
-        self.fc2 = nn.Linear(24, 36)
-        self.fc3 = nn.Linear(36, 1)
+        self.fc2 = nn.Linear(24, 1)
         self.global_memory = global_memory
 
     def forward(self, g, real_features, cat_features, mask):
-        x = self.gcn(g, real_features, cat_features)[mask.flatten()].unsqueeze(0)
+        x = self.gcn(g, real_features, cat_features)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.softmax(self.fc3(x), dim=0)
+        x = F.softmax(self.fc2(x)[mask.flatten()], dim=0)
         return x.flatten()
 
     def act(self, g, real_features, cat_features, mask):
@@ -121,7 +119,9 @@ class MasterSchedulerRL(MasterSchedulerBase):
         """
         Overridden.
         """
-        _, _, _, task_ids = self.get_graph()  # put some graph data in slave chache
+        graph, task_ids = self.get_graph()  # put some graph data in slave chache
+        self.scheduled = 0
+        self.graph = graph
         self.task_ids = task_ids
         self.n_tasks = len(self.task_ids.items())
         self.hosts = self.get_hosts()
@@ -166,13 +166,13 @@ class MasterSchedulerRL(MasterSchedulerBase):
             if not free_hosts or not schedulable:
                 break
 
-            graph, real_features, cat_features = self.get_graph()
-            logging.debug('Requesting agent scheduling action')
-            action = self.context.model.act(graph, real_features, cat_features, schedulable_mask)
-            logging.debug(f'Recived scheduling action {action}')
+            real_features, cat_features = self.get_graph()
+            action = self.context.model.act(self.graph, real_features, cat_features, schedulable_mask)
             task_to_schedule = schedulable.pop(action)['name']
             top_host = self.get_top_host(task_to_schedule, free_hosts)
             self.hosts_data[top_host]["free"] = False
+            self.scheduled += 1
+            logging.info(f'Scheduled {self.scheduled} out of {self.n_tasks}')
             schedulable_mask[self.task_ids[task_to_schedule]] = 0
             self.set_schedule([
                 (task_to_schedule, top_host)
@@ -230,7 +230,8 @@ def main():
     # Parameters
     num_episode = 300
     batch_size = 5
-    learning_rate = 0.1
+    learning_rate = 0.02
+    initial_factor = 1.3
     gamma = 0.99
     memory = Memory()
     feature_extractor = FeatureExtractor()
@@ -243,7 +244,8 @@ def main():
 
     context = Context(
         env_file='./data/environment/exp1_systems/cluster_5_1-4_100_100_1.xml',
-        task_file='./data/workflows/dot/SIPHT.n.50.0.dot',
+        task_file='./data/workflows/dot/SIPHT.n.500.1.dot',
+        # task_file='./data/workflows/dot/LIGO.n.50.2.dot',
         feature=feature_extractor,
     )
 
@@ -266,7 +268,7 @@ def main():
 
     epoch = 0
     makespans = []
-    makespans_history = [heuristic_makespan * 1.5]
+    makespans_history = [heuristic_makespan * initial_factor]
 
     for episode in range(num_episode):
         logging.info(f'Episode: {episode + 1}')
@@ -294,7 +296,9 @@ def main():
             reward_std = np.std(rewards_batch)
             rewards_batch = (rewards_batch - reward_mean) / reward_std
 
-            makespans_history.append(np.mean(makespans))
+            makespans_mean = np.mean(makespans)
+            if makespans_mean < np.mean(makespans_history):
+                makespans_history.append(makespans_mean)
 
             if experiment is not None:
                 experiment.log_metric('Avg epoch makespan', np.mean(makespans), step=epoch, epoch=0)
