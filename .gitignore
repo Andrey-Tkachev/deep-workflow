@@ -51,3 +51,7 @@ data/workflows/raw
 
 # Keys
 *.key
+
+
+# Config
+config.ini

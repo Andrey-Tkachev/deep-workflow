@@ -1,7 +1,7 @@
 import logging
 
-from proxsim import Context, master_scheduling
-from proxsim.scheduler import MasterSchedulerDummy
+from deepworkflow.proxsim import Context, master_scheduling
+from deepworkflow.proxsim.scheduler import MasterSchedulerDummy
 
 
 def master_callback(simulation_clock):
