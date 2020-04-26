@@ -48,7 +48,7 @@ def size_probs(rng, curr_episode, num_episode):
 
 
 def get_task(curr_episode, num_episode, task_type='GENOME'):
-    sizes = TASK_SIZES_BY_TYPE[task_type]
+    sizes = TASK_SIZES_BY_TYPE[task_type][:4]
     probs = size_probs(len(sizes), curr_episode, num_episode)
     size_id = Categorical(probs).sample().item()
     files = glob.glob(f'data/workflows/dot/{task_type}.n.{sizes[size_id]}.*')
@@ -60,11 +60,11 @@ def main():
     config.read('config.ini')
 
     utils.configure_logs(config['logs'])
-    experiment = utils.create_experiment(config['comet'])
-
+    # experiment = utils.create_experiment(config['comet'])
+    experiment = None
     # Parameters
     memory = Memory()
-    num_episode = 1000
+    num_episode = 600
     batch_size = 5
     learning_rate = 0.01
     initial_factor = 1.2
@@ -96,6 +96,7 @@ def main():
         task_file='',
         feature=feature_extractor,
     )
+    file_statistics = {}
     context.model = policy_net
     for episode in range(num_episode):
         if episode % batch_size == 0:
@@ -112,11 +113,20 @@ def main():
             expected_makespan_by_type = expected_makespan[task_type][size]
             step_dict[task_type][size] += 1
             step = step_dict[task_type][size]
+            if task_file not in file_statistics:
+                heuristic_makespan = utils.get_heuristics_estimation(context)
+                file_statistics[task_file] = {
+                    'heuristic_makespan': heuristic_makespan,
+                    'model_makespan_history': []
+                }
 
         logging.info(f'Episode: {episode + 1}')
         with torch.no_grad(), memory.episode(gamma, reward_mode):
             makespan = master_scheduling(context, MasterSchedulerRL)
-            total_reward = -(makespan - np.mean(expected_makespan_by_type))
+            expected = np.mean(
+                [file_statistics[context.task_file]['heuristic_makespan'] * initial_factor] +
+                file_statistics[context.task_file]['model_makespan_history'])
+            total_reward = -(makespan - expected)
             memory.set_reward(total_reward)
             makespans_batch.append(makespan)
             logging.info(f'Reward is {total_reward}')
@@ -139,6 +149,7 @@ def main():
 
             makespans_mean = np.mean(makespans_batch)
             expected_makespan_by_type.append(makespans_mean)
+            file_statistics[context.task_file]['model_makespan_history'].append(makespans_mean)
 
             if experiment is not None:
                 experiment.log_metric('Avg epoch makespan', makespans_mean / np.std(makespans_batch), step=epoch, epoch=0)
@@ -168,6 +179,32 @@ def main():
             memory.clear()
             optimizer.step()
 
+
+
+    def get_task_type(task_file):
+        task_type, _, task_size, _ = task_file.split('/')[-1].split('.', 3)
+        return task_type, task_size
+
+    statistics = {}
+    for task_file in file_statistics:
+        task_type = get_task_type(task_file)
+        if task_type not in statistics:
+            statistics[task_type] = {
+                'heuristics': [],
+                'initial_model': [],
+                'trained_model': [],
+            }
+        statistics[task_type]['heuristics'].append(file_statistics[task_file]['heuristic_makespan'])
+        statistics[task_type]['initial_model'].append(file_statistics[task_file]['model_makespan_history'][0])
+        statistics[task_type]['trained_model'].append(file_statistics[task_file]['model_makespan_history'][-1])
+
+    for task_type in statistics:
+        print(f'''
+            {task_type[0]}.n.{task_type[1]}
+                heuristics average makespan:    {np.mean(statistics[task_type]["heuristics"])}
+                initial model average makespan: {np.mean(statistics[task_type]["initial_model"])}
+                trained model average makespan: {np.mean(statistics[task_type]["trained_model"])}
+        ''')
 
 if __name__ == '__main__':
     main()

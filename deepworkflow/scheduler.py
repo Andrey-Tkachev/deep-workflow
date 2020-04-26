@@ -2,6 +2,7 @@ import logging
 
 import dgl
 import numpy as np
+import random
 import torch
 
 from pysimgrid import simdag
@@ -67,6 +68,7 @@ class MasterSchedulerRL(MasterSchedulerBase):
             logging.debug('Request graph')
             real_features, cat_features = self.get_graph()
             logging.debug(f'Call model')
+            action = random.choice(range(len(schedulable)))
             action = self.context.model.act(self.graph, real_features, cat_features, schedulable_mask)
             logging.debug(f'Model prediction')
 

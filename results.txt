@@ -1,0 +1,73 @@
+# Gamma reward
+GENOME.n.50
+    heuristics average makespan:    41418.72220703186
+    initial model average makespan: 49148.692199277306
+    trained model average makespan: 48424.526683804885
+
+
+GENOME.n.100
+    heuristics average makespan:    90789.89328893897
+    initial model average makespan: 91554.87734989471
+    trained model average makespan: 90669.0001318354
+
+
+GENOME.n.200
+    heuristics average makespan:    154551.50650469048
+    initial model average makespan: 153434.17409960713
+    trained model average makespan: 153167.4590854327
+
+
+GENOME.n.300
+    heuristics average makespan:    226578.11916144326
+    initial model average makespan: 214537.0039416704
+    trained model average makespan: 215625.11106285133
+
+
+# Normal reward
+GENOME.n.50
+    heuristics average makespan:    41290.17331329545
+    initial model average makespan: 47831.97077535259
+    trained model average makespan: 48226.27387942729
+
+
+GENOME.n.100
+    heuristics average makespan:    90183.27343538064
+    initial model average makespan: 91021.50783453323
+    trained model average makespan: 90575.0290634866
+
+
+GENOME.n.200
+    heuristics average makespan:    146731.1290898371
+    initial model average makespan: 145336.37030912936
+    trained model average makespan: 144821.24176598346
+
+
+GENOME.n.300
+    heuristics average makespan:    234131.64641236613
+    initial model average makespan: 225304.67455699484
+    trained model average makespan: 223516.3745982962
+
+
+# Random model
+GENOME.n.50
+    heuristics average makespan:    43550.510389370225
+    initial model average makespan: 52089.658328216836
+    trained model average makespan: 51546.84933085065
+
+
+GENOME.n.100
+    heuristics average makespan:    77265.74080943388
+    initial model average makespan: 84225.2752749524
+    trained model average makespan: 84644.34698665631
+
+
+GENOME.n.200
+    heuristics average makespan:    154739.79071783094
+    initial model average makespan: 158792.08656926884
+    trained model average makespan: 158280.1854644791
+
+
+GENOME.n.300
+    heuristics average makespan:    230916.5069284669
+    initial model average makespan: 227286.43945091538
+    trained model average makespan: 226606.36640264926
