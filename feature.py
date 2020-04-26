@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 import networkx as nx
+import numpy as np
 import dgl
 from pysimgrid import simdag
 from pysimgrid.simdag import Simulation
@@ -10,7 +11,7 @@ from proxsim import FeatureExtractorBase
 
 
 class FeatureExtractor(FeatureExtractorBase):
-    REAL_FEATURES_NUM = 5
+    REAL_FEATURES_NUM = 7
     CAT_FEATURES_NUM = 1
     CAT_DIMS = [
         max(map(lambda c: c.value, simdag.TaskState)),
@@ -21,6 +22,49 @@ class FeatureExtractor(FeatureExtractorBase):
         self.heft_rank = None
         self.critical_values = None
         self.task_ids = None
+        self.real_features = None
+        self.cat_features = None
+        self.first_resquest = True
+
+
+    def _first_request(self, simulation):
+        self.graph = simulation.get_task_graph()
+        platform_model = cscheduling.PlatformModel(simulation)
+        ordered_tasks = cscheduling.heft_order(self.graph, platform_model)
+        self.heft_rank = dict()
+        for i, t in enumerate(ordered_tasks):
+            self.heft_rank[t.name] = i
+        self.critical_values = self._calculate_critical_value(self.graph)
+        self.task_ids = dict()
+        have_to_return_ids_map = True
+
+        for ind, task in enumerate(self.graph):
+            self.task_ids[task.name] = ind
+
+        data_len = len(self.graph)
+        self.real_features = np.zeros((data_len, self.REAL_FEATURES_NUM), dtype=np.float)
+        self.cat_features = np.zeros((data_len, self.CAT_FEATURES_NUM), dtype=np.int64)
+
+        # Init static features here
+        for task in self.graph:
+            ind = self.task_ids[task.name]
+            self.real_features[ind][0] = task.amount
+            self.real_features[ind][1] = self.heft_rank[task.name]
+            self.real_features[ind][2] = self.critical_values[task.name]
+            self.real_features[ind][3] = self.graph.in_degree(task)
+            self.real_features[ind][4] = self.graph.out_degree(task)
+            self.real_features[ind][5] = sum(data['weight']
+                for _, _, data in self.graph.out_edges(task, data=True))
+            self.real_features[ind][6] = max(data['weight']
+                for _, _, data in self.graph.in_edges(task, data=True)) if task.name != 'root' else 0
+
+        nxgraph = nx.DiGraph()
+        for u, v, weight in self.graph.edges.data('weight'):
+            nxgraph.add_edge(self.task_ids[u.name], self.task_ids[v.name], weight=weight)
+
+        dglgraph = dgl.DGLGraph()
+        dglgraph.from_networkx(nxgraph)
+        return dglgraph, self.task_ids
 
     @staticmethod
     def _calculate_critical_value(graph: nx.DiGraph):
@@ -44,54 +88,17 @@ class FeatureExtractor(FeatureExtractorBase):
             Overriden.
         """
 
-        graph = simulation.get_task_graph()
-        if self.heft_rank is None:
-            platform_model = cscheduling.PlatformModel(simulation)
-            ordered_tasks = cscheduling.heft_order(graph, platform_model)
-            self.heft_rank = dict()
-            for i, t in enumerate(ordered_tasks):
-                self.heft_rank[t.name] = i
-        
-        if self.critical_values is None:
-            self.critical_values = self._calculate_critical_value(graph)
+        if self.first_resquest:
+            self.first_resquest = False
+            return self._first_request(simulation)
 
-        have_to_return_ids_map = False
-        if self.task_ids is None:
-            self.task_ids = dict()
-            have_to_return_ids_map = True
-
-            for ind, task in enumerate(graph):
-                self.task_ids[task.name] = ind
-
-            nxgraph = nx.DiGraph()
-        data_len = len(graph)
-        real_features = torch.zeros((data_len, self.REAL_FEATURES_NUM), dtype=torch.float)
-        cat_features = torch.zeros((data_len, self.CAT_FEATURES_NUM), dtype=torch.long)
-
-        for task in graph:
+        for task in self.graph:
             ind = self.task_ids[task.name]
-            real_features[ind] = torch.tensor([
-                task.amount,
-                self.heft_rank[task.name],
-                self.critical_values[task.name],
-                graph.in_degree(task),
-                graph.out_degree(task),
-            ])
-            cat_features[ind] = torch.tensor([
+            self.cat_features[ind] = np.array([
                 task.state.value
             ])
-            if have_to_return_ids_map:
-                nxgraph.add_node(ind)
 
-        if have_to_return_ids_map:
-            for u, v, weight in graph.edges.data('weight'):
-                nxgraph.add_edge(self.task_ids[u.name], self.task_ids[v.name], weight=weight)
-
-        if have_to_return_ids_map:
-            graph = dgl.DGLGraph()
-            graph.from_networkx(nxgraph)
-            return graph, self.task_ids
-        return real_features.numpy(), cat_features.numpy()
+        return self.real_features, self.cat_features
 
 
     def get_hosts_features(self, simulation: Simulation):

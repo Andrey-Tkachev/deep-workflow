@@ -59,9 +59,13 @@ class Memory:
         reward_pool[-1] = episode_reward
 
         running_add = 0
+        mid = len(reward_pool) // 2
+        coefs = np.exp(-0.5 * ((np.arange(len(reward_pool)) - mid) / mid) ** 2.0)
         for i in reversed(range(len(reward_pool))):
-            running_add = running_add * gamma + reward_pool[i]
-            reward_pool[i] = running_add
+            # running_add = running_add * gamma + reward_pool[i]
+            # reward_pool[i] = running_add
+            reward_pool[i] = coefs[i] * episode_reward
+
         self.rewards_batch.append(np.array(reward_pool))
         self.actions_batch.append(self.actions)
         self.states_batch.append(self.states)
@@ -103,8 +107,8 @@ class PolicyNet(nn.Module):
         return x.flatten()
 
     def act(self, g, real_features, cat_features, mask):
-        real_features = torch.tensor(real_features)
-        cat_features = torch.tensor(cat_features)
+        real_features = torch.tensor(real_features, dtype=torch.float)
+        cat_features = torch.tensor(cat_features, dtype=torch.int64)
         action_probs = self.forward(g, real_features, cat_features, mask)
         dist = torch.distributions.Categorical(action_probs)
         action = dist.sample()
@@ -148,8 +152,7 @@ class MasterSchedulerRL(MasterSchedulerBase):
 
     def get_top_host(self, task, hosts):
         eets = self.get_eet(task, hosts)
-        sorted_free_hosts = sorted(list(zip(eets, hosts)), key=lambda eet_host: eet_host[0])
-        return sorted_free_hosts[0][1]
+        return min(zip(eets, hosts), key=lambda eet_host: eet_host[0])[1]
 
     def schedule(self):
         """
@@ -172,11 +175,11 @@ class MasterSchedulerRL(MasterSchedulerBase):
             top_host = self.get_top_host(task_to_schedule, free_hosts)
             self.hosts_data[top_host]["free"] = False
             self.scheduled += 1
-            logging.info(f'Scheduled {self.scheduled} out of {self.n_tasks}')
-            schedulable_mask[self.task_ids[task_to_schedule]] = 0
             self.set_schedule([
                 (task_to_schedule, top_host)
             ])
+            schedulable_mask[self.task_ids[task_to_schedule]] = 0
+            logging.debug(f'Scheduled {self.scheduled} out of {self.n_tasks}')
 
 
 def create_experiment() -> Experiment:
@@ -231,7 +234,7 @@ def main():
     num_episode = 300
     batch_size = 5
     learning_rate = 0.02
-    initial_factor = 1.3
+    initial_factor = 1.1
     gamma = 0.99
     memory = Memory()
     feature_extractor = FeatureExtractor()
@@ -244,7 +247,7 @@ def main():
 
     context = Context(
         env_file='./data/environment/exp1_systems/cluster_5_1-4_100_100_1.xml',
-        task_file='./data/workflows/dot/SIPHT.n.500.1.dot',
+        task_file='./data/workflows/dot/LIGO.n.100.1.dot',
         # task_file='./data/workflows/dot/LIGO.n.50.2.dot',
         feature=feature_extractor,
     )
@@ -283,7 +286,6 @@ def main():
         if experiment is not None:
             experiment.log_metric('Reward', total_reward, step=episode, epoch=epoch)
             experiment.log_metric('MakeSpan', makespan, step=episode, epoch=epoch)
-
 
         logging.info(f'Batch size {len(memory.states_batch)}')
         # Update policy
