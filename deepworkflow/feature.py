@@ -11,7 +11,7 @@ from .proxsim import FeatureExtractorBase
 
 
 class FeatureExtractor(FeatureExtractorBase):
-    REAL_FEATURES_NUM = 8 # 9
+    REAL_FEATURES_NUM = 9
     CAT_FEATURES_NUM = 1
     CAT_DIMS = [
         max(map(lambda c: c.value, simdag.TaskState)),
@@ -99,10 +99,10 @@ class FeatureExtractor(FeatureExtractorBase):
             if self.real_features[ind][7] < 1e-8 and task.state == simdag.TaskState.TASK_STATE_DONE:
                 self.real_features[ind][7] = simulation.clock
 
-            #if task.state == simdag.TaskState.TASK_STATE_SCHEDULABLE:
-            #     self.real_features[ind][8] = np.mean(
-            #        self.get_eets(task, self.host_names)
-            #    )
+            if task.state == simdag.TaskState.TASK_STATE_SCHEDULABLE:
+                self.real_features[ind][8] = np.mean(
+                   self.get_eets(task, self.host_names)
+               )
 
         return self.real_features, self.cat_features
 
