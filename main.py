@@ -24,13 +24,15 @@ from deepworkflow.proxsim import Context, master_scheduling
 from deepworkflow.feature import FeatureExtractor
 from deepworkflow import utils
 
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 
 
 TASK_TYPES = [
     'GENOME',
-   # 'LIGO',
-   # 'MONTAGE',
-   # 'SIPHT'
+    #'LIGO',
+    #'MONTAGE',
+    #'SIPHT'
 ]
 
 TASK_SIZES_BY_TYPE = {
@@ -51,8 +53,21 @@ def get_task(curr_episode, num_episode, task_type='GENOME'):
     sizes = TASK_SIZES_BY_TYPE[task_type]
     probs = size_probs(len(sizes), curr_episode, num_episode)
     size_id = Categorical(probs).sample().item()
-    files = glob.glob(f'data/workflows/dot/{task_type}.n.{sizes[size_id]}.*')
+    files = glob.glob(f'data/workflows/dot/{task_type}.n.100.1.*')
     return random.choice(files), sizes[size_id]
+
+
+def visualize_features(features, fig, ax):
+    X_embedded = TSNE(n_components=2, random_state=42).fit_transform(features)
+
+    alpha = 0.7
+    ax.scatter(
+        X_embedded[:, 0],
+        X_embedded[:, 1],
+        cmap="jet",
+    )
+    ax.set(aspect="equal", xlabel="$X_1$", ylabel="$X_2$")
+    return 
 
 
 def main():
@@ -64,32 +79,50 @@ def main():
 
     # Parameters
     memory = Memory()
+    epochs_num = 5
+    track_size = 10
     num_episode = 1000
-    batch_size = 5
-    learning_rate = 0.01
-    initial_factor = 1.2
+    learning_rate = 0.0005
+    easiness_factor = 1.2
+    easiness_decay = 0.999
+    use_ppo = True
+    eps_clip = 0.2
+    entropy_loss = True
+    entropy_coef = 0.0001
+    reward_mode = 'gamma'
     gamma = 0.99
-    reward_mode = 'normal'
+    weight_decay = 0.01
+
+    if experiment is not None:
+        experiment.log_parameters({
+            'epochs_num': epochs_num,
+            'num_episode': num_episode,
+            'track_size': track_size,
+            'learning_rate': learning_rate,
+            'easiness_factor': easiness_factor,
+            'easiness_decay': easiness_decay,
+            'use_ppo': use_ppo,
+            'eps_clip': eps_clip,
+            'entropy_loss': entropy_loss,
+            'reward_mode': reward_mode,
+            'gamma': gamma,
+            'weight_decay': weight_decay,
+        })
 
     feature_extractor = FeatureExtractor()
     policy_net = PolicyNet(
         real_dim=feature_extractor.REAL_FEATURES_NUM,
         cat_dims=feature_extractor.CAT_DIMS,
-        emb_dim=10,
+        cat_emb_dim=12,
+        hid_emb_dim=16,
+        hid_pol_dim=16,
         global_memory=memory)
-    optimizer = torch.optim.RMSprop(policy_net.parameters(), lr=learning_rate)
+    optimizer = torch.optim.RMSprop(policy_net.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     # Better than average results here
-    expected_makespan = {
-        task_type: {size: [] for size in TASK_SIZES_BY_TYPE[task_type]}
-        for task_type in TASK_TYPES
-    }
-    step_dict = {
-        task_type: {size: 0 for size in TASK_SIZES_BY_TYPE[task_type]}
-        for task_type in TASK_TYPES
-    }
+    heuristic_chache = {}
     makespans_batch = []
-    epoch = 0
+    track = 0
 
     context = Context(
         env_file='./data/environment/exp1_systems/cluster_5_1-4_100_100_1.xml',
@@ -98,38 +131,36 @@ def main():
     )
     context.model = policy_net
     for episode in range(num_episode):
-        if episode % batch_size == 0:
+        if episode % track_size == 0:
             task_type = random.choice(TASK_TYPES)
             task_file, size = get_task(episode, num_episode, task_type)
             context.task_file = task_file
             logging.info(f'Current task: {task_file}')
-            if not expected_makespan[task_type][size]:
+            if task_file not in heuristic_chache:
                 heuristic_makespan = utils.get_heuristics_estimation(context)
-                expected_makespan[task_type][size].append(heuristic_makespan)
-                logging.info(f'Heuristics makespan {task_type}.{size}: {heuristic_makespan}')
-                if experiment is not None:
-                    experiment.log_text(f'Heuristics makespan {task_type}.{size}: {heuristic_makespan}')
-            expected_makespan_by_type = expected_makespan[task_type][size]
-            step_dict[task_type][size] += 1
-            step = step_dict[task_type][size]
+                heuristic_chache[task_file] = heuristic_makespan
 
-        logging.info(f'Episode: {episode + 1}')
         with torch.no_grad(), memory.episode(gamma, reward_mode):
             makespan = master_scheduling(context, MasterSchedulerRL)
-            total_reward = -(makespan - np.mean(expected_makespan_by_type))
-            memory.set_reward(total_reward)
+            heu_makespan = heuristic_chache.get(context.task_file)
+            total_reward = (heu_makespan * easiness_factor - makespan) / (0.5 * heu_makespan)
+            # total_reward = 1.0 / makespan if makespan > heu_makespan * easiness_factor else 10.0 / makespan
             makespans_batch.append(makespan)
-            logging.info(f'Reward is {total_reward}')
-            logging.info(f'MakeSpan is {makespan}')
-        
-        if experiment is not None:
-            experiment.log_metric(f'Reward {task_type}.{size}', total_reward, step=step, epoch=0)
-            experiment.log_metric(f'MakeSpan {task_type}.{size}', makespan, step=step, epoch=0)
+            memory.set_reward(total_reward)
+        logging.info(f'Episode: {episode + 1}; Makespan: {makespan}; Heuristic: {heu_makespan}')
 
+
+        #fig, ax = plt.subplots(figsize=(7, 7))
         # Update policy
         logging.info(f'Batch size {len(memory.states_batch)}')
-        if len(memory.states_batch) == batch_size:
-            epoch += 1
+        if len(memory.states_batch) == track_size:
+            easiness_factor = max(easiness_factor * easiness_decay, 0.95)
+            track += 1
+            if experiment is not None:
+                experiment.log_metric(
+                    'Makespan ratio', np.mean(makespans_batch) / heuristic_chache.get(context.task_file), step=track
+                )
+                experiment.log_metric('Easiness factor', easiness_factor)
             rewards_batch = np.array(memory.rewards_batch)
 
             # Normalize reward
@@ -137,36 +168,55 @@ def main():
             reward_std = np.std(rewards_batch)
             rewards_batch = (rewards_batch - reward_mean) / reward_std
 
-            makespans_mean = np.mean(makespans_batch)
-            expected_makespan_by_type.append(makespans_mean)
-
-            if experiment is not None:
-                experiment.log_metric('Avg epoch makespan', makespans_mean / np.std(makespans_batch), step=epoch, epoch=0)
-                experiment.log_metric('Avg epoch reward', np.mean(rewards_batch), step=epoch, epoch=0)
-
             # Gradient Desent
-            optimizer.zero_grad()
-
             logging.info('Update policy')
-            for batch_id in range(batch_size):
+            for epoch in range(epochs_num):
                 loss = None
-                for state, action, reward in zip(memory.states_batch[batch_id], memory.actions_batch[batch_id], rewards_batch[batch_id]):
-                    g, real_features, cat_features, mask = state
+                for track_id in range(track_size):
+                    for item, (state, action) in enumerate(zip(memory.states_batch[track_id], memory.actions_batch[track_id])):
+                        g, real_features, cat_features, old_logprob, mask = state
 
-                    with memory.no_memory():
-                        probs = policy_net(g, real_features, cat_features, mask)
-                    dist = Categorical(probs)
-                    curr_loss = -dist.log_prob(action) * reward
-                    if loss is None:
-                        loss = curr_loss
-                    else:
-                        loss += curr_loss
-                loss /= batch_size
+                        if mask.sum() == 1:
+                            continue
+
+                        with memory.no_memory():
+                            probs, embs = policy_net(g, real_features, cat_features, mask, return_embs=True)
+                        dist = Categorical(probs)
+                        reward =  np.sum(rewards_batch[track_id][item:]) - np.mean(
+                            np.sum(rewards_batch[:, item:], axis=-1)
+                        )
+                        log_prob = dist.log_prob(action)
+                        ratios = torch.exp(log_prob - old_logprob)
+                            
+                        # Finding Surrogate Loss:
+                        if use_ppo:
+                            surr1 = ratios * reward
+                            surr2 = torch.clamp(ratios, 1 - eps_clip, 1 + eps_clip) * reward
+                            curr_loss = -torch.min(surr1, surr2)
+                        else:
+                            curr_loss = -log_prob * reward
+
+                        if entropy_loss:
+                            curr_loss -= entropy_coef * dist.entropy()
+
+                        if loss is None:
+                            loss = curr_loss
+                        else:
+                            loss += curr_loss
+
+                # if experiment is not None and epoch == epochs_num - 1:
+                #     visualize_features(embs.detach().numpy(), fig, ax)
+                #     experiment.log_figure(f'Embs {track}', figure=fig, step=track)
+                #     ax.cla()
+
+                loss /= track_size
+                optimizer.zero_grad()
                 loss.backward()
+                optimizer.step()
+                logging.info(f'Loss {loss.item()}')
 
             makespans_batch = []
             memory.clear()
-            optimizer.step()
 
 
 if __name__ == '__main__':
