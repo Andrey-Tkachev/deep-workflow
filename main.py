@@ -44,16 +44,27 @@ TASK_SIZES_BY_TYPE = {
 
 
 def size_probs(rng, curr_episode, num_episode):
-    x = (torch.arange(0, rng) - rng * curr_episode / num_episode) / rng
-    x = torch.exp(-5 * x ** 2.0)
-    return F.softmax(x * 30, dim=0) 
+    x = torch.zeros((rng, )) - 100.0
+    bound = int(rng * curr_episode / num_episode)
+    x[:bound + 1] = 0.1 * (1.0 - curr_episode / num_episode)
+    x[bound] = 1.0 + curr_episode / num_episode
+    return F.softmax(x, dim=0)
+
+
+def get_all_tasks_of_size(task_type='GENOME', size=50):
+    files = glob.glob(f'data/workflows/dot/{task_type}.n.{size}.*')
+    return files
 
 
 def get_task(curr_episode, num_episode, task_type='GENOME'):
-    sizes = TASK_SIZES_BY_TYPE[task_type]
+    sizes = TASK_SIZES_BY_TYPE[task_type][:4]
     probs = size_probs(len(sizes), curr_episode, num_episode)
     size_id = Categorical(probs).sample().item()
+<<<<<<< HEAD
     files = glob.glob(f'data/workflows/dot/{task_type}.n.100.1.*')
+=======
+    files = get_all_tasks_of_size(task_type, sizes[size_id])
+>>>>>>> 5ccf1ad5e0cdb28a393d25b6a91a8cb01052c6c4
     return random.choice(files), sizes[size_id]
 
 
@@ -75,10 +86,11 @@ def main():
     config.read('config.ini')
 
     utils.configure_logs(config['logs'])
+    experiment = None
     experiment = utils.create_experiment(config['comet'])
-
     # Parameters
     memory = Memory()
+<<<<<<< HEAD
     epochs_num = 5
     track_size = 10
     num_episode = 1000
@@ -108,6 +120,16 @@ def main():
             'gamma': gamma,
             'weight_decay': weight_decay,
         })
+=======
+    num_episode = 600
+    track_size = 10
+    epochs_num = 4
+    learning_rate = 0.001
+    easy_factor = 1.2
+    easy_factor_decay = 0.999
+    gamma = 0.99
+    reward_mode = 'gamma'
+>>>>>>> 5ccf1ad5e0cdb28a393d25b6a91a8cb01052c6c4
 
     feature_extractor = FeatureExtractor()
     policy_net = PolicyNet(
@@ -122,19 +144,23 @@ def main():
     # Better than average results here
     heuristic_chache = {}
     makespans_batch = []
+<<<<<<< HEAD
     track = 0
+=======
+    tracks = 0
+>>>>>>> 5ccf1ad5e0cdb28a393d25b6a91a8cb01052c6c4
 
     context = Context(
         env_file='./data/environment/exp1_systems/cluster_5_1-4_100_100_1.xml',
         task_file='',
         feature=feature_extractor,
     )
+    file_statistics = {}
     context.model = policy_net
     for episode in range(num_episode):
         if episode % track_size == 0:
             task_type = random.choice(TASK_TYPES)
             task_file, size = get_task(episode, num_episode, task_type)
-            context.task_file = task_file
             logging.info(f'Current task: {task_file}')
             if task_file not in heuristic_chache:
                 heuristic_makespan = utils.get_heuristics_estimation(context)
@@ -166,7 +192,7 @@ def main():
             # Normalize reward
             reward_mean = np.mean(rewards_batch)
             reward_std = np.std(rewards_batch)
-            rewards_batch = (rewards_batch - reward_mean) / reward_std
+            rewards_batch = (rewards_batch - reward_mean) / (reward_std + 1e-5)
 
             # Gradient Desent
             logging.info('Update policy')
@@ -217,6 +243,28 @@ def main():
 
             makespans_batch = []
             memory.clear()
+
+
+    policy_net.eval()
+    task_type = 'GNOME'
+    for size in [50, 100, 200, 300]:
+        files = get_all_tasks_of_size(size=size)
+        heu = []
+        model = []
+        for task_file in files[:4]:
+            context.task_file = task_file
+            heuristic_makespan = utils.get_heuristics_estimation(context)
+            for _ in range(5):
+                with torch.no_grad(), memory.no_memory():
+                    makespan = master_scheduling(context, MasterSchedulerRL)
+                model.append(makespan)
+
+            heu.append(heuristic_makespan)
+        print(f'''
+            {task_type}.n.{size}
+                heuristics average makespan:    {np.mean(heu)}
+                trained model average makespan: {np.mean(model)}
+        ''')
 
 
 if __name__ == '__main__':

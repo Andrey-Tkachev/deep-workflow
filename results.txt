@@ -1,0 +1,54 @@
+GENOME.n.50
+    heuristics average makespan:    38471.39563646757
+    trained model average makespan: 40540.652594116975
+
+GENOME.n.100
+    heuristics average makespan:    116294.21728096338
+    trained model average makespan: 120477.38907326196
+
+GENOME.n.200
+    heuristics average makespan:    174719.67672710764
+    trained model average makespan: 173782.3821275946
+
+GENOME.n.300
+    heuristics average makespan:    243755.98708787299
+    trained model average makespan: 238236.6050013512
+
+
+# LR = 0.001 Uniform for prev sizes
+GENOME.n.50
+    heuristics average makespan:    38471.39563646757
+    trained model average makespan: 39876.69662067149
+
+
+GENOME.n.100
+    heuristics average makespan:    116294.21728096338
+    trained model average makespan: 115154.77297896025
+
+
+GENOME.n.200
+    heuristics average makespan:    174719.67672710764
+    trained model average makespan: 168080.98991463694
+
+
+GENOME.n.300
+    heuristics average makespan:    243755.98708787299
+    trained model average makespan: 231136.0263730211
+
+
+# Random 
+GNOME.n.50
+    heuristics average makespan:    38471.39563646757
+    trained model average makespan: 46860.417341519424
+
+GNOME.n.100
+    heuristics average makespan:    116294.21728096338
+    trained model average makespan: 127693.21222331355
+
+GNOME.n.200
+    heuristics average makespan:    174719.67672710764
+    trained model average makespan: 177024.2608335745
+
+GNOME.n.300
+    heuristics average makespan:    243755.98708787299
+    trained model average makespan: 245800.24599971212
