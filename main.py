@@ -34,10 +34,18 @@ TASK_TYPES = [
     #'MONTAGE',
     #'SIPHT',
     'RANDOM',
+    #'RANDOM2',
+    #'RANDOM3',
+    #'RANDOM_FIXED_20',
+    #'RANDOM_FIXED_30'
 ]
 
 TASK_SIZES_BY_TYPE = {
     'RANDOM': [5, 10],
+    'RANDOM2': [20, 30],
+    'RANDOM3': [10, 20, 30, 40, 50],
+    'RANDOM_FIXED_20': [20],
+    'RANDOM_FIXED_30': [30],
     'GENOME': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], #, 2000, 3000, 4000, 5000, 6000],
     'LIGO': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
     'MONTAGE': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
@@ -54,10 +62,10 @@ def size_probs(rng, curr_episode, num_episode):
 
 
 def get_all_tasks_of_size(task_type='GENOME', size=50):
-    if task_type != 'RANDOM':
+    if not task_type.startswith('RANDOM'):
         pattern = f'data/workflows/dot/{task_type}.n.{size}.*'
     else:
-        pattern =  f'data/workflows/random/daggen_{size}_*'
+        pattern =  f'data/workflows/{task_type.lower()}/daggen_{size}_*'
 
     files = glob.glob(pattern)
     return files
@@ -104,7 +112,7 @@ def main():
     eps_clip = 0.2
     entropy_loss = False
     entropy_coef = 0.00001
-    reward_mode = 'gamma'
+    reward_mode = 'classic'
     substract_baseline_reward = True
     root_mode =  'cat' #'tahn_mul'
     gamma = 0.99
@@ -153,7 +161,7 @@ def main():
     context.model = policy_net
     for episode in range(num_episode):
         if episode % track_size == 0:
-            task_type = random.choice(TASK_TYPES + ['RANDOM'])
+            task_type = random.choice(TASK_TYPES) + ['RANDOM'])
             task_file, size = get_task(episode, num_episode, task_type)
             context.task_file = task_file
             logging.info(f'Current task: {task_file}')
@@ -164,10 +172,13 @@ def main():
         with torch.no_grad(), memory.episode(gamma, reward_mode):
             makespan = master_scheduling(context, MasterSchedulerRL)
             heu_makespan = heuristic_chache.get(context.task_file)
-            total_reward = (heu_makespan * easiness_factor - makespan) / (0.5 * heu_makespan)
+            if reward_mode == 'classic':
+                total_reward = -makespan
+            else:
+                total_reward = (heu_makespan * easiness_factor - makespan) / (0.1 * heu_makespan)
             # 1.0 / makespan if makespan > heu_makespan * easiness_factor else 10.0 / makespan
-            makespans_batch.append(makespan)
             memory.set_reward(total_reward)
+            makespans_batch.append(makespan)
         logging.info(f'Episode: {episode + 1}; Makespan: {makespan}; Heuristic: {heu_makespan}')
 
 
@@ -175,19 +186,24 @@ def main():
         # Update policy
         logging.info(f'Batch size {len(memory.states_batch)}')
         if len(memory.states_batch) == track_size:
-            easiness_factor = max(easiness_factor * easiness_decay, 0.95)
             track += 1
+            policy_net.eval()
+            eval_makespan = master_scheduling(context, MasterSchedulerRL)
+            policy_net.train()
             if experiment is not None:
                 experiment.log_metric(
                     'Makespan ratio', np.mean(makespans_batch) / heuristic_chache.get(context.task_file), step=track
                 )
+                experiment.log_metric(
+                    'Eval makespan ratio', eval_makespan / heuristic_chache.get(context.task_file), step=track
+                )
                 experiment.log_metric('Easiness factor', easiness_factor)
             rewards_batch = np.array(memory.rewards_batch)
-
             # Normalize reward
             reward_mean = np.mean(rewards_batch)
             reward_std = np.std(rewards_batch)
             rewards_batch = (rewards_batch - reward_mean) / (reward_std + 1e-5)
+            easiness_factor = max(easiness_factor * easiness_decay, 0.95)
 
             # Gradient Desent
             logging.info('Update policy')
@@ -211,11 +227,10 @@ def main():
                         log_prob = dist.log_prob(action)
                         if epoch == epochs_num - 1 and track_id == 0:
                             logging.debug(probs)
-
-                        ratios = torch.exp(log_prob - old_logprob)
-                            
+    
                         # Finding Surrogate Loss:
                         if use_ppo:
+                            ratios = torch.exp(log_prob - old_logprob)
                             surr1 = ratios * reward
                             surr2 = torch.clamp(ratios, 1 - eps_clip, 1 + eps_clip) * reward
                             curr_loss = -torch.min(surr1, surr2)

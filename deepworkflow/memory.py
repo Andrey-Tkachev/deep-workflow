@@ -10,6 +10,7 @@ class Memory:
     def _reset(self):
         self.actions = None
         self.states = None
+        self.rewards = None
         self.actions_batch = []
         self.states_batch = []
         self.rewards_batch = []
@@ -31,11 +32,21 @@ class Memory:
         self.actions.append(action)
 
     def set_reward(self, episode_reward):
+        if not self.active:
+            return
         self.episode_reward = episode_reward
+
+    def add_reward(self, action_reward):
+        if not self.active:
+            return
+        delta = float(len(self.actions) - len(self.rewards))
+        while len(self.rewards) < len(self.actions):
+            self.rewards.append(action_reward / delta)
 
     def start_episode(self):
         self.actions = []
         self.states = []
+        self.rewards = []
         self.episode_reward = 0
 
     def end_episode(self, episode_reward, gamma=0.99, reward_mode='gamma'):
@@ -46,11 +57,14 @@ class Memory:
             for i in reversed(range(len(reward_pool))):
                 running_add = running_add * gamma + reward_pool[i]
                 reward_pool[i] = running_add
-        else:
+        elif reward_mode == 'normal':
             mid = len(reward_pool) // 2
             coefs = np.exp(-0.5 * ((np.arange(len(reward_pool)) - mid) / mid) ** 2.0)
             for i in reversed(range(len(reward_pool))):
                 reward_pool[i] = coefs[i] * episode_reward
+        elif reward_mode == 'classic':
+            self.add_reward(episode_reward - sum(self.rewards))
+            reward_pool = np.array(self.rewards)
 
         self.rewards_batch.append(reward_pool)
         self.actions_batch.append(self.actions)
@@ -58,7 +72,7 @@ class Memory:
 
     @contextmanager
     def episode(self, gamma=0.99, reward_mode='gamma'):
-        assert reward_mode in ['gamma', 'normal']
+        assert reward_mode in ['gamma', 'normal', 'classic']
         _active_prev = self.active
         self.active = True
 

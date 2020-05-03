@@ -36,7 +36,6 @@ class SlaveScheduler(simdag.DynamicScheduler):
     @staticmethod
     def host(simulation, name):
         return cplatform.host_by_name(name)
-        # return simulation.hosts.by_prop('name', name)[0]
 
     def action_set_schedule(self, simulation: simdag.Simulation, **params) -> None:
         for task_name, host_name in params['schedule']:
@@ -74,6 +73,9 @@ class SlaveScheduler(simdag.DynamicScheduler):
             'hosts': [host.name for host in task.hosts]
         } for task in simulation.tasks[selector]]
 
+    def action_get_clock(self, simulation: simdag.Simulation, **params) -> float:
+        return simulation.clock
+
     def init_bindings(self):
         self._action_binding = {
             ActionType.SetSchedule: self.action_set_schedule,
@@ -82,6 +84,7 @@ class SlaveScheduler(simdag.DynamicScheduler):
             ActionType.GetGraph: self.action_get_graph,
             ActionType.GetHosts: self.action_get_hosts,
             ActionType.GetTasks: self.action_get_tasks,
+            ActionType.GetClock: self.action_get_clock,
         }
 
     def make_communications(self, simulation: simdag.Simulation, changed=None):

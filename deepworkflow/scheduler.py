@@ -25,6 +25,7 @@ class MasterSchedulerRL(MasterSchedulerBase):
         self.task_ids = task_ids
         self.n_tasks = len(self.task_ids.items())
         self.hosts = self.get_hosts()
+        self.clock_last = None
         self.hosts_data = {
             host['name']: {'free': True} for host in self.hosts
         }
@@ -55,10 +56,12 @@ class MasterSchedulerRL(MasterSchedulerBase):
         Overridden.
         """
         self._update_free_hosts()
+        clock = self.get_clock()
         schedulable = sorted(self.get_tasks(simdag.TaskState.TASK_STATE_SCHEDULABLE.name), key=lambda t: self.task_ids[t['name']])
         schedulable_mask = self._mask_from_tasks(schedulable)
         logging.debug(f'Schedulable number: {len(schedulable)}')
         logging.debug(schedulable)
+        have_to_schedule = len(schedulable)
         while True:
             free_hosts = self.get_free_hosts()
             logging.debug(f'Number of free hosts: {len(free_hosts)}')
@@ -78,5 +81,8 @@ class MasterSchedulerRL(MasterSchedulerBase):
             self.set_schedule([
                 (task_to_schedule, top_host)
             ])
+            if self.clock_last is not None:
+                self.context.model.act_reward(-(clock - self.clock_last))
             schedulable_mask[self.task_ids[task_to_schedule]] = 0
             logging.debug(f'Scheduled {self.scheduled} out of {self.n_tasks}')
+        self.clock_last = clock

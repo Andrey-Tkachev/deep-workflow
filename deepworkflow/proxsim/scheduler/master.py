@@ -35,7 +35,6 @@ class MasterSchedulerBase(object):
         self.connection.send(Action(action, params))
         result = self.connection.recv()
         logging.debug('Action result recived')
-        # logging.debug(f'Action result is {result}')
         return result
 
     def stop_communication(self):
@@ -53,6 +52,9 @@ class MasterSchedulerBase(object):
 
     def get_eet(self, task, hosts):
         return self.communicate(ActionType.GetEet, {'task': task, 'hosts': hosts})
+
+    def get_clock(self):
+        return self.communicate(ActionType.GetClock)
 
     def set_schedule(self, schedule):
         self.communicate(ActionType.SetSchedule, {'schedule': schedule})

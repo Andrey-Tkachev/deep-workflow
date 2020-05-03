@@ -1,0 +1,29 @@
+digraph G {
+  root [size="0.000000e+00"];
+  task_1 [size="3.075834e+10"];
+  task_2 [size="5.801937e+09"];
+  task_3 [size="8.780218e+10"];
+  task_4 [size="9.469548e+10"];
+  task_5 [size="8.574489e+09"];
+  task_6 [size="4.860419e+10"];
+  task_7 [size="6.930560e+09"];
+  task_8 [size="7.606261e+10"];
+  task_9 [size="7.658578e+10"];
+  task_10 [size="1.284786e+10"];
+  end [size="0.000000e+00"];
+
+  root -> task_1 [size="1.000000e-12"];
+  task_1 -> task_2 [size="5.801937e+07"];
+  task_1 -> task_3 [size="8.780218e+08"];
+  task_2 -> end [size="1.000000e-12"];
+  task_3 -> task_4 [size="9.469548e+08"];
+  task_4 -> task_5 [size="8.574489e+07"];
+  task_5 -> task_6 [size="4.860419e+08"];
+  task_5 -> task_7 [size="6.930560e+07"];
+  task_6 -> end [size="1.000000e-12"];
+  task_7 -> task_8 [size="7.606261e+08"];
+  task_8 -> task_9 [size="7.658578e+08"];
+  task_8 -> task_10 [size="1.284786e+08"];
+  task_9 -> end [size="1.000000e-12"];
+  task_10 -> end [size="1.000000e-12"];
+}

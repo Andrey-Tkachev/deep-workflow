@@ -12,7 +12,13 @@ done;
 
 
   python3.6 -m pysimgrid.tools.dag_gen \
-        -n 5 10 --fat 0.5 0.8 --density 0.1 --jump 2 \
-        --mindata 1e6 --maxdata 1e9 --ccr 10 100 \
-        --repeat 5 --seed 42 \
-        "data/workflows/random/"
+        -n 30 --fat 0.2 0.5 0.8 --density 0.4 --jump 2 3 \
+        --mindata 1e5 --maxdata 1e9 --ccr 10 100 \
+        --repeat 20 --seed 42 \
+        "data/workflows/random_fixed_30/"
+
+    python3.6 -m pysimgrid.tools.dag_gen \
+        -n 20 --fat 0.2 0.5 0.8 --density 0.4 --jump 2 3 \
+        --mindata 1e5 --maxdata 1e9 --ccr 10 100 \
+        --repeat 20 --seed 42 \
+        "data/workflows/random_fixed_20/"

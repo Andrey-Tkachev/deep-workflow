@@ -15,4 +15,5 @@ class ActionType(Enum):
     GetGraph = 4
     GetHosts = 5
     GetTasks = 6
+    GetClock = 7
     _End = 100

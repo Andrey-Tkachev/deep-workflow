@@ -73,13 +73,19 @@ class PolicyNet(nn.Module):
         real_features = torch.tensor(real_features, dtype=torch.float, requires_grad=False)
         cat_features = torch.tensor(cat_features, dtype=torch.int64)
         action_probs = self.forward(g, real_features, cat_features, mask)
-        dist = Categorical(action_probs)
-        action = dist.sample()
-        state = (
-            g,
-            real_features.detach(), 
-            cat_features.detach(), 
-            dist.log_prob(action).detach(),
-            mask.clone())
-        self.global_memory.register(action, state)
+        if not self.training:
+            action = action_probs.max(0)[1]
+        else:
+            dist = Categorical(action_probs)
+            action = dist.sample()
+            state = (
+                g,
+                real_features.detach(), 
+                cat_features.detach(), 
+                dist.log_prob(action).detach(),
+                mask.clone())
+            self.global_memory.register(action, state)
         return action.item()
+
+    def act_reward(self, reward):
+        self.global_memory.add_reward(reward)
