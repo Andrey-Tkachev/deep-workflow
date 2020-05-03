@@ -154,6 +154,7 @@ class MasterSchedulerRL(MasterSchedulerBase):
 
     def get_top_host(self, task, hosts):
         eets = self.get_eet(task, hosts)
+        print(eets)
         return min(zip(eets, hosts), key=lambda eet_host: eet_host[0])[1]
 
     def schedule(self):
@@ -170,7 +171,6 @@ class MasterSchedulerRL(MasterSchedulerBase):
             logging.debug(f'Number of free hosts: {len(free_hosts)}')
             if not free_hosts or not schedulable:
                 break
-
             real_features, cat_features = self.get_graph()
             action = self.context.model.act(self.graph, real_features, cat_features, schedulable_mask)
             task_to_schedule = schedulable.pop(action)['name']

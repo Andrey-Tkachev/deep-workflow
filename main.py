@@ -32,10 +32,12 @@ TASK_TYPES = [
     'GENOME',
     #'LIGO',
     #'MONTAGE',
-    #'SIPHT'
+    #'SIPHT',
+    'RANDOM',
 ]
 
 TASK_SIZES_BY_TYPE = {
+    'RANDOM': [5, 10],
     'GENOME': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], #, 2000, 3000, 4000, 5000, 6000],
     'LIGO': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
     'MONTAGE': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
@@ -52,19 +54,21 @@ def size_probs(rng, curr_episode, num_episode):
 
 
 def get_all_tasks_of_size(task_type='GENOME', size=50):
-    files = glob.glob(f'data/workflows/dot/{task_type}.n.{size}.*')
+    if task_type != 'RANDOM':
+        pattern = f'data/workflows/dot/{task_type}.n.{size}.*'
+    else:
+        pattern =  f'data/workflows/random/daggen_{size}_*'
+
+    files = glob.glob(pattern)
     return files
 
 
 def get_task(curr_episode, num_episode, task_type='GENOME'):
-    sizes = TASK_SIZES_BY_TYPE[task_type][:4]
+    sizes = TASK_SIZES_BY_TYPE[task_type][:2]
     probs = size_probs(len(sizes), curr_episode, num_episode)
     size_id = Categorical(probs).sample().item()
-<<<<<<< HEAD
-    files = glob.glob(f'data/workflows/dot/{task_type}.n.100.1.*')
-=======
+
     files = get_all_tasks_of_size(task_type, sizes[size_id])
->>>>>>> 5ccf1ad5e0cdb28a393d25b6a91a8cb01052c6c4
     return random.choice(files), sizes[size_id]
 
 
@@ -90,20 +94,21 @@ def main():
     experiment = utils.create_experiment(config['comet'])
     # Parameters
     memory = Memory()
-<<<<<<< HEAD
-    epochs_num = 5
-    track_size = 10
-    num_episode = 1000
+    epochs_num = 8
+    track_size = 8
+    num_episode = 2000
     learning_rate = 0.0005
     easiness_factor = 1.2
     easiness_decay = 0.999
     use_ppo = True
     eps_clip = 0.2
-    entropy_loss = True
-    entropy_coef = 0.0001
+    entropy_loss = False
+    entropy_coef = 0.00001
     reward_mode = 'gamma'
+    substract_baseline_reward = True
+    root_mode =  'cat' #'tahn_mul'
     gamma = 0.99
-    weight_decay = 0.01
+    weight_decay = 0.001
 
     if experiment is not None:
         experiment.log_parameters({
@@ -119,17 +124,9 @@ def main():
             'reward_mode': reward_mode,
             'gamma': gamma,
             'weight_decay': weight_decay,
+            'root_mode': root_mode,
+            'substract_baseline_reward': substract_baseline_reward,
         })
-=======
-    num_episode = 600
-    track_size = 10
-    epochs_num = 4
-    learning_rate = 0.001
-    easy_factor = 1.2
-    easy_factor_decay = 0.999
-    gamma = 0.99
-    reward_mode = 'gamma'
->>>>>>> 5ccf1ad5e0cdb28a393d25b6a91a8cb01052c6c4
 
     feature_extractor = FeatureExtractor()
     policy_net = PolicyNet(
@@ -138,17 +135,14 @@ def main():
         cat_emb_dim=12,
         hid_emb_dim=16,
         hid_pol_dim=16,
+        root_features_mode=root_mode,
         global_memory=memory)
     optimizer = torch.optim.RMSprop(policy_net.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     # Better than average results here
     heuristic_chache = {}
     makespans_batch = []
-<<<<<<< HEAD
     track = 0
-=======
-    tracks = 0
->>>>>>> 5ccf1ad5e0cdb28a393d25b6a91a8cb01052c6c4
 
     context = Context(
         env_file='./data/environment/exp1_systems/cluster_5_1-4_100_100_1.xml',
@@ -159,8 +153,9 @@ def main():
     context.model = policy_net
     for episode in range(num_episode):
         if episode % track_size == 0:
-            task_type = random.choice(TASK_TYPES)
+            task_type = random.choice(TASK_TYPES + ['RANDOM'])
             task_file, size = get_task(episode, num_episode, task_type)
+            context.task_file = task_file
             logging.info(f'Current task: {task_file}')
             if task_file not in heuristic_chache:
                 heuristic_makespan = utils.get_heuristics_estimation(context)
@@ -170,7 +165,7 @@ def main():
             makespan = master_scheduling(context, MasterSchedulerRL)
             heu_makespan = heuristic_chache.get(context.task_file)
             total_reward = (heu_makespan * easiness_factor - makespan) / (0.5 * heu_makespan)
-            # total_reward = 1.0 / makespan if makespan > heu_makespan * easiness_factor else 10.0 / makespan
+            # 1.0 / makespan if makespan > heu_makespan * easiness_factor else 10.0 / makespan
             makespans_batch.append(makespan)
             memory.set_reward(total_reward)
         logging.info(f'Episode: {episode + 1}; Makespan: {makespan}; Heuristic: {heu_makespan}')
@@ -208,10 +203,15 @@ def main():
                         with memory.no_memory():
                             probs, embs = policy_net(g, real_features, cat_features, mask, return_embs=True)
                         dist = Categorical(probs)
-                        reward =  np.sum(rewards_batch[track_id][item:]) - np.mean(
-                            np.sum(rewards_batch[:, item:], axis=-1)
-                        )
+                        reward =  np.sum(rewards_batch[track_id][item:])
+                        if substract_baseline_reward:
+                            reward -= np.mean(
+                                np.sum(rewards_batch[:, item:], axis=-1)
+                            )
                         log_prob = dist.log_prob(action)
+                        if epoch == epochs_num - 1 and track_id == 0:
+                            logging.debug(probs)
+
                         ratios = torch.exp(log_prob - old_logprob)
                             
                         # Finding Surrogate Loss:
@@ -229,15 +229,11 @@ def main():
                             loss = curr_loss
                         else:
                             loss += curr_loss
-
-                # if experiment is not None and epoch == epochs_num - 1:
-                #     visualize_features(embs.detach().numpy(), fig, ax)
-                #     experiment.log_figure(f'Embs {track}', figure=fig, step=track)
-                #     ax.cla()
-
                 loss /= track_size
                 optimizer.zero_grad()
                 loss.backward()
+                for name, param in policy_net.named_parameters():
+                    logging.debug(f'{name}: {(param.grad.data ** 2.0).sum().sqrt().item()}')
                 optimizer.step()
                 logging.info(f'Loss {loss.item()}')
 

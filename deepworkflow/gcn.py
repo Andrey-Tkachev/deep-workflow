@@ -58,8 +58,8 @@ class GCN(nn.Module):
         self.cat_dim = len(cat_dims) * emb_dim
         self.input_dim = self.real_dim + self.cat_dim
         self.out_dim = out_dim
-        self.layer1 = GCNLayer(self.input_dim, hid_dim, hid_dim * 2)
-        self.layer2 = GCNLayer(hid_dim * 2, hid_dim, out_dim)
+        self.layer1 = GCNLayer(self.input_dim, hid_dim, out_dim)
+        # self.layer2 = GCNLayer(hid_dim * 2, hid_dim, out_dim)
         self.embs = nn.ModuleList([
             nn.Embedding(dim, emb_dim) for dim in cat_dims
         ])
@@ -67,12 +67,12 @@ class GCN(nn.Module):
         self.n_cat_features = len(cat_dims)
 
     def forward(self, g, real_features, cat_features):
-        real_features = real_features / (real_features.abs().max(0)[0] + 1e-12)
+        real_features = (real_features) / (real_features.abs().max(0)[0] + 1e-12)
         cat_embs = torch.zeros((real_features.size(0), self.cat_dim), dtype=torch.float)
         for i in range(self.n_cat_features):
             st, end = i * self.cat_dim, (i + 1) * self.cat_dim
             cat_embs[:, st: end] += self.embs[i](cat_features[:, i])
         features = torch.cat((real_features, cat_embs), dim=-1)
         x = self.layer1(g, features)
-        x = self.layer2(g, x)
+        #x = self.layer2(g, x)
         return x

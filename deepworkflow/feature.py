@@ -45,7 +45,6 @@ class FeatureExtractor(FeatureExtractorBase):
         self.cat_features = np.zeros((data_len, self.CAT_FEATURES_NUM), dtype=np.int64)
         self.host_names = [host.name for host in simulation.hosts]
 
-
         # Init static features here
         for task in self.graph:
             ind = self.task_ids[task.name]
@@ -96,7 +95,8 @@ class FeatureExtractor(FeatureExtractorBase):
 
         free_hosts = set(self.host_names)
         for task in simulation.tasks[simdag.TaskState.TASK_STATE_RUNNING, simdag.TaskState.TASK_STATE_SCHEDULED]:
-            free_hosts.remove(task.hosts[0].name)        
+            if task.hosts[0].name in free_hosts:
+                free_hosts.remove(task.hosts[0].name)        
         free_hosts = list(free_hosts)
 
         for task in self.graph:
