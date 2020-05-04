@@ -39,8 +39,7 @@ class PolicyNet(nn.Module):
             hid_dim=hid_emb_dim,
             out_dim=out_emb_dim,
             )
-        if root_features_mode is not None:
-            assert root_features_mode in {'tahn_mul', 'cat'}
+        assert root_features_mode in {'tahn_mul', 'cat', 'none', None}
         self.fc1 = nn.Linear(out_emb_dim, hid_pol_dim)
         self.fc2 = nn.Linear(hid_pol_dim, hid_pol_dim)
         self.fc3 = nn.Linear(hid_pol_dim * (2 if root_features_mode == 'cat' else 1), 1)
@@ -51,18 +50,18 @@ class PolicyNet(nn.Module):
 
     def forward(self, g, real_features, cat_features, mask, return_embs=False):
         embs = self.gcn(g, real_features, cat_features)
-        x = F.leaky_relu(self.fc1(embs))
+        x = F.leaky_relu(self.fc1(embs[mask.flatten()]))
         x = F.leaky_relu(self.fc2(x))
-        if self.root_features_mode is  None:
-            x = self.fc3(x[mask.flatten()])
+        if self.root_features_mode is None or self.root_features_mode == 'none':
+            x = self.fc3(x)
         elif self.root_features_mode == 'tahn_mul':
             x *= torch.tanh(x[0])
-            x = self.fc3(x[mask.flatten()])
+            x = self.fc3(x)
         else:
             z = torch.zeros((x.size(0), 2 * x.size(1)))
             z[:, :self.hid_pol_dim] += x[0, :]
             z[:, self.hid_pol_dim:] = x
-            x = self.fc3(z[mask.flatten()])
+            x = self.fc3(z)
 
         x = F.softmax(x, dim=0)
         if return_embs:

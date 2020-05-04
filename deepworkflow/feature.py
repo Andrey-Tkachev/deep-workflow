@@ -17,7 +17,7 @@ class FeatureExtractor(FeatureExtractorBase):
         max(map(lambda c: c.value, simdag.TaskState)),
     ]
 
-    def __init__(self):
+    def __init__(self, return_dgl=True):
         assert self.CAT_FEATURES_NUM == len(self.CAT_DIMS)
         self.heft_rank = None
         self.critical_values = None
@@ -25,6 +25,7 @@ class FeatureExtractor(FeatureExtractorBase):
         self.real_features = None
         self.cat_features = None
         self.first_resquest = True
+        self.return_dgl = return_dgl
 
     def _first_request(self, simulation):
         self.graph = simulation.get_task_graph()
@@ -33,7 +34,7 @@ class FeatureExtractor(FeatureExtractorBase):
         self.heft_rank = dict()
         for i, t in enumerate(ordered_tasks):
             self.heft_rank[t.name] = i
-        self.critical_values = self._calculate_critical_value(self.graph)
+        self.critical_values = self._calculate_critical_value(self.graph, platform_model, simulation)
         self.task_ids = dict()
         have_to_return_ids_map = True
 
@@ -60,27 +61,31 @@ class FeatureExtractor(FeatureExtractorBase):
 
         nxgraph = nx.DiGraph()
         for u, v, weight in self.graph.edges.data('weight'):
-            nxgraph.add_edge(self.task_ids[v.name], self.task_ids[u.name], weight=weight)
+            preds = len(self.graph.in_edges(v))
+            if preds == 1 or (preds > 1 and u.name != 'root'):
+                nxgraph.add_edge(self.task_ids[v.name], self.task_ids[u.name], weight=weight)
 
-        dglgraph = dgl.DGLGraph()
-        dglgraph.from_networkx(nxgraph)
-        return dglgraph, self.task_ids
+        if self.return_dgl:
+            graph = dgl.DGLGraph()
+            graph.from_networkx(nxgraph)
+            return graph, self.task_ids
+        return nxgraph, self.task_ids
 
     @staticmethod
-    def _calculate_critical_value(graph: nx.DiGraph):
+    def _calculate_critical_value(graph: nx.DiGraph, platform: cplatform, simulation: Simulation):
         '''Calcualte critical value for each node in graph
 
         Critical value of node u is max({critical_value[v]: v is child of u}) + weight[u]
         '''
         critical_values = dict()
+        mean_speed = platform.mean_speed
+        mean_bandwidth = platform.mean_bandwidth
+        mean_latency = platform.mean_latency
         for node in reversed(list(nx.topological_sort(graph))):
-            critical_values[node.name] = graph.nodes[node]['weight']
-            descendants = nx.descendants(graph, node)
-            if descendants:
-                critical_values[node.name] += max(map(
-                    lambda v: critical_values[v.name],
-                    descendants
-                ))
+            max_child = 0.0
+            for child, edge in graph[node].items():
+                max_child = max(max_child, critical_values[child.name] + edge["weight"] / mean_bandwidth + mean_latency)
+            critical_values[node.name] = max_child + graph.nodes[node]['weight'] / mean_speed
         return critical_values
 
 

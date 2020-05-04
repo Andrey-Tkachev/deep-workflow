@@ -75,7 +75,10 @@ class MasterSchedulerRL(MasterSchedulerBase):
             logging.debug(f'Model prediction')
 
             task_to_schedule = schedulable.pop(action)['name']
-            top_host = self.get_top_host(task_to_schedule, free_hosts)
+            if len(free_hosts) > 1:
+                top_host = self.get_top_host(task_to_schedule, free_hosts)
+            else:
+                top_host = free_hosts[0]
             self.hosts_data[top_host]["free"] = False
             self.scheduled += 1
             self.set_schedule([
