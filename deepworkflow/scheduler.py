@@ -59,7 +59,7 @@ class MasterSchedulerRL(MasterSchedulerBase):
         clock = self.get_clock()
         schedulable = sorted(self.get_tasks(simdag.TaskState.TASK_STATE_SCHEDULABLE.name), key=lambda t: self.task_ids[t['name']])
         schedulable_mask = self._mask_from_tasks(schedulable)
-        logging.debug(f'Schedulable number: {len(schedulable)}')
+        logging.debug(f'Schedulable number: {len(schedulable)}; Clock {self.get_clock()}')
         logging.debug(schedulable)
         have_to_schedule = len(schedulable)
         while True:

@@ -101,5 +101,8 @@ class SlaveScheduler(simdag.DynamicScheduler):
         self.make_communications(simulation)
 
     def schedule(self, simulation, changed):
+        logging.debug([(c.name, c.state) for c in changed])
+        if len(simulation.tasks[simdag.TaskState.TASK_STATE_SCHEDULABLE]) == 0:
+            return
         self.connection.state(SimulationState.Schedule)
         self.make_communications(simulation, changed)

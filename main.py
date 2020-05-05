@@ -32,15 +32,18 @@ from sklearn.manifold import TSNE
 
 
 TASK_TYPES = [
-    'GENOME',
+   #'GENOME',
     #'LIGO',
     #'MONTAGE',
     #'SIPHT',
     #'RANDOM',
     #'RANDOM2',
     #'RANDOM3',
+    #'GENOME_FIXED_100',
+    #'GENOME_FIXED_200',
+    'GENOME_FIXED_300',
     #'RANDOM_FIXED_20',
-    #'RANDOM_FIXED_30'
+    'RANDOM_FIXED_30'
 ]
 
 TASK_SIZES_BY_TYPE = {
@@ -50,6 +53,9 @@ TASK_SIZES_BY_TYPE = {
     'RANDOM_FIXED_20': [20],
     'RANDOM_FIXED_30': [30],
     'GENOME': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], #, 2000, 3000, 4000, 5000, 6000],
+    'GENOME_FIXED_100': [100],
+    'GENOME_FIXED_200': [200],
+    'GENOME_FIXED_300': [300],
     'LIGO': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
     'MONTAGE': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
     'SIPHT': [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] #, 2000, 3000, 4000, 5000, 6000],
@@ -65,10 +71,12 @@ def size_probs(rng, curr_episode, episodes_num):
 
 
 def get_all_tasks_of_size(task_type='GENOME', size=50):
-    if not task_type.startswith('RANDOM'):
-        pattern = f'data/workflows/dot/{task_type}.n.{size}.1.*'
-    else:
+    if task_type.startswith('RANDOM'):
         pattern =  f'data/workflows/{task_type.lower()}/daggen_{size}_*'
+    elif task_type.startswith('GENOME_FIXED_'):
+        pattern = f'data/workflows/dot/GENOME.n.{size}.1.*'
+    else:
+        pattern = f'data/workflows/dot/{task_type}.n.{size}.*'
 
     files = glob.glob(pattern)
     return files
